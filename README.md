@@ -1,5 +1,5 @@
-## Sequence to sequence learning with Keras
-Sequence to sequence learning using several deep models.
+## Sequence to sequence learning for GEC task with Keras
+Sequence to sequence learning for GEC task using several deep models.
 
 ## Implemented models
 - Baseline model: Attention Seq2Seq model.
