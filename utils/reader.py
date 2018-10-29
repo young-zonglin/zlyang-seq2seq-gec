@@ -15,25 +15,25 @@ from utils import tools
 match_newline_pattern = re.compile('\n+')
 
 
-def load_word_vecs(fname, head_n=None, open_encoding='utf-8'):
+def load_vecs(fname, head_n=None, open_encoding='utf-8'):
     """
-    装载前N个词向量
+    装载前N个嵌入向量
     :param fname:
-    :param head_n: head n word vectors will be loaded
+    :param head_n: head n embedding vectors will be loaded
     :param open_encoding: open file encoding
-    :return: dict, {word: str => vector: float list}
+    :return: dict, {token: str => vector: float list}
     """
     line_count = 0
-    word2vec = {}
+    token2vec = {}
     try:
         fin = io.open(fname, 'r', encoding=open_encoding,
                       newline='\n', errors='ignore')
     except FileNotFoundError as error:
         print(error)
-        return word2vec
+        return token2vec
 
     for line in fin:
-        # load head n word vectors
+        # load head n embedding vectors
         if head_n and head_n.__class__ == int:
             line_count += 1
             if line_count > head_n:
@@ -43,9 +43,9 @@ def load_word_vecs(fname, head_n=None, open_encoding='utf-8'):
         # 将传入的函数作用于传入的可迭代对象（例如list）的每一个元素之上
         # float也是一个类
         # Convert a string or number to a floating point number, if possible.
-        word2vec[tokens[0]] = list(map(float, tokens[1:]))
+        token2vec[tokens[0]] = list(map(float, tokens[1:]))
     fin.close()
-    return word2vec
+    return token2vec
 
 
 def generate_text_from_corpus(path, open_encoding='utf-8'):
@@ -64,42 +64,42 @@ def generate_text_from_corpus(path, open_encoding='utf-8'):
             yield file.read()
 
 
-def read_words(url, open_encoding='utf-8'):
+def read_tokens(url, open_encoding='utf-8'):
     """
-    Read all distinct words.
+    Read all distinct tokens.
     :param url:
     :param open_encoding:
     :return: set, {'apple', 'banana', ...}
     """
-    ret_words = set()
+    ret_tokens = set()
     if os.path.isdir(url):
         for text in generate_text_from_corpus(url, open_encoding):
             for line in match_newline_pattern.split(text):
-                for word in line.split():
-                    ret_words.add(word)
+                for token in line.split():
+                    ret_tokens.add(token)
     elif os.path.isfile(url):
         with open(url, 'r', encoding=open_encoding) as file:
             for line in file:
-                for word in line.split():
-                    ret_words.add(word)
-    return ret_words
+                for token in line.split():
+                    ret_tokens.add(token)
+    return ret_tokens
 
 
 def get_needed_vectors(url, full_vecs_fname, needed_vecs_fname,
                        open_encoding='utf-8', save_encoding='utf-8'):
     """
-    1. Read all distinct words from processed train files.
-    2. If word not in needed word vectors file, get it's vector from full word vectors file.
-    3. Return needed word vectors dict.
-    :return: dict, {word: str => vector: float list}
+    1. Read all distinct tokens from processed train files.
+    2. If token not in needed token vectors file, get it's vector from full token vectors file.
+    3. Return needed token vectors dict.
+    :return: dict, {token: str => vector: float list}
     """
-    all_words = read_words(url, open_encoding)
-    needed_word2vec = load_word_vecs(needed_vecs_fname, open_encoding=open_encoding)
+    all_tokens = read_tokens(url, open_encoding)
+    needed_token2vec = load_vecs(needed_vecs_fname, open_encoding=open_encoding)
 
     is_all_in_needed = True
-    for word in all_words:
-        if word not in needed_word2vec:
-            print(word, 'not in needed word2vec.')
+    for token in all_tokens:
+        if token not in needed_token2vec:
+            print(token, 'not in needed token2vec.')
             is_all_in_needed = False
     if not is_all_in_needed:
         with open(full_vecs_fname, 'r', encoding=open_encoding) as full_file, \
@@ -111,15 +111,15 @@ def get_needed_vectors(url, full_vecs_fname, needed_vecs_fname,
                 if line_count % 100000 == 0:
                     print(line_count, 'has been processed.')
                 tokens = line.strip().split()
-                word = tokens[0]
-                if word in all_words and word not in needed_word2vec:
+                token = tokens[0]
+                if token in all_tokens and token not in needed_token2vec:
                     for token in tokens:
                         needed_file.write(token+' ')
                     needed_file.write('\n')
-        needed_word2vec = load_word_vecs(needed_vecs_fname, open_encoding=open_encoding)
+        needed_token2vec = load_vecs(needed_vecs_fname, open_encoding=open_encoding)
     else:
-        print('All words in needed word2vec.')
-    return needed_word2vec
+        print('All tokens in needed token2vec.')
+    return needed_token2vec
 
 
 def split_train_val_test(raw_url, train_fname, val_fname, test_fname,
@@ -169,30 +169,30 @@ def split_train_val_test(raw_url, train_fname, val_fname, test_fname,
                         test_file.write(line + '\n')
 
 
-def load_pretrained_word_vecs(fname, open_encoding='utf-8'):
+def load_pretrained_token_vecs(fname, open_encoding='utf-8'):
     """
-    load needed word vectors
-    :return: dict, {word: str => embedding: numpy array}
+    load needed token vectors
+    :return: dict, {token: str => embedding: numpy array}
     """
-    word2vec = load_word_vecs(fname, open_encoding=open_encoding)
-    for word, embedding in word2vec.items():
+    token2vec = load_vecs(fname, open_encoding=open_encoding)
+    for token, embedding in token2vec.items():
         embedding = np.asarray(embedding, dtype=np.float32)
-        word2vec[word] = embedding
-    return word2vec
+        token2vec[token] = embedding
+    return token2vec
 
 
-def get_embedding_matrix(word2id, word2vec, vec_dim):
+def get_embedding_matrix(token2id, token2vec, vec_dim):
     """
-    turn word2vec dict to embedding matrix
-    :param word2id: dict
-    :param word2vec: dict
+    turn token2vec dict to embedding matrix
+    :param token2id: dict
+    :param token2vec: dict
     :param vec_dim: embedding dim
     :return: embedding matrix
     """
-    embedding_matrix = np.zeros((len(word2id)+1, vec_dim))
-    for word, index in word2id.items():
-        # words not found in word2vec will be all-zeros.
-        embedding = word2vec.get(word)
+    embedding_matrix = np.zeros((len(token2id) + 1, vec_dim))
+    for token, index in token2id.items():
+        # tokens not found in token2vec will be all-zeros.
+        embedding = token2vec.get(token)
         if embedding is not None:
             embedding_matrix[index] = embedding
     return embedding_matrix
@@ -213,26 +213,39 @@ def count_lines(url, open_encoding='utf-8'):
     return line_count
 
 
-def fit_tokenizer(raw_url, keep_word_num, filters='', oov_tag='<UNK>',
-                  char_level=False, open_encoding='utf-8'):
+def get_max_len(url, open_encoding='utf-8'):
+    src_max_len = -1
+    tgt_max_len = -1
+    with open(url, 'r', encoding=open_encoding) as file:
+        for line in file:
+            field_list = line.split('\t')
+            if len(field_list) != 2:
+                continue
+            src, tgt = field_list[0].strip().split(' '), field_list[1]\
+                .strip().replace('\n', '').split(' ')
+            src_max_len = max(src_max_len, len(src))
+            tgt_max_len = max(tgt_max_len, len(tgt))
+    return src_max_len, tgt_max_len
+
+
+def fit_tokenizer(raw_url, keep_token_num, filters='',
+                  oov_tag='<unk>', open_encoding='utf-8'):
     """
     use corpus to fit tokenizer.
     :param raw_url: corpus path or filename.
-    :param keep_word_num: the maximum number of words to keep, based
-            on word frequency. Only the most common `keep_word_num` words
+    :param keep_token_num: the maximum number of tokens to keep, based
+            on token frequency. Only the most common `keep_token_num` tokens
             will be kept.
     :param filters: a string where each element is a character that will be
             filtered from the texts. The default is empty string.
-    :param oov_tag: if given, it will be added to word_index and used to
-            replace out-of-vocabulary words during text_to_sequence calls.
-    :param char_level: if True, every character will be treated as a token.
+    :param oov_tag: if given, it will be added to token_index and used to
+            replace out-of-vocabulary tokens during text_to_sequence calls.
     :param open_encoding:
     :return: tokenizer fitted by corpus.
     """
-    tokenizer = Tokenizer(num_words=keep_word_num,
+    tokenizer = Tokenizer(num_words=keep_token_num,
                           filters=filters,
-                          oov_token=oov_tag,
-                          char_level=char_level)
+                          oov_token=oov_tag)
     if os.path.isdir(raw_url):
         tokenizer.fit_on_texts(generate_text_from_corpus(raw_url, open_encoding))
     else:
@@ -258,7 +271,7 @@ def generate_in_out_pair_file(fname, tokenizer, open_encoding='utf-8'):
                     in_out_pair = line.split(base_params.SEPARATOR)
                     if len(in_out_pair) != 2:
                         continue
-                    source, target = in_out_pair[0], in_out_pair[1]
+                    source, target = in_out_pair[0].strip(), in_out_pair[1].strip().replace('\n', '')
                     encodeds = tokenizer.texts_to_sequences([source, target])
                     yield encodeds[0], encodeds[1]
 
@@ -284,12 +297,16 @@ def process_format_model_in(in_out_pairs, input_len, output_len, vocab_size,
         y_in.append(in_out_pair[1][:-1])
         y_out.append(in_out_pair[1][1:])
 
+    if input_len is None or output_len is None:
+        input_len = max([len(src) for src in x])
+        output_len = max([len(tgt) for tgt in y_out])
+
     # list of lists => 2d numpy array
     x = pad_sequences(x, maxlen=input_len, padding=pad, truncating=cut)
     y_in = pad_sequences(y_in, maxlen=output_len, padding=pad, truncating=cut)
 
     y_out = pad_sequences(y_out, maxlen=output_len, padding=pad, truncating=cut)
-    # y.shape == (batch size, output length, one-hot vec dim)
+    # y_out.shape == (batch size, output length, one-hot vec dim)
     y_out = np.asarray([to_categorical(y_out[i], vocab_size+1) for i in range(len(y_out))])
 
     return {'x_in': x, 'y_in': y_in}, y_out

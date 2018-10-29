@@ -13,7 +13,10 @@ def train():
     embedding_name = available_embeddings[0]
     embedding_params = get_embedding_params(embedding_name)
 
-    tools.train_model(seq2seq_model, hyperparams, corpus_params, embedding_params)
+    error_text = '我在家里一个人学习中文。'
+    tools.train_model(seq2seq_model, hyperparams, corpus_params, embedding_params,
+                      observe=True, error_text=error_text,
+                      beam_width=5, beamsearch_interval=20)
 
 
 if __name__ == '__main__':

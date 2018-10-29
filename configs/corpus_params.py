@@ -18,6 +18,8 @@ class CorpusParams:
         self.val_url = None
         self.test_url = None
 
+        self.filters = ''
+
     def __str__(self):
         ret_info = list()
         ret_info.append("open file encoding: " + self.open_file_encoding + '\n')
@@ -28,6 +30,8 @@ class CorpusParams:
         ret_info.append("train url: " + str(self.train_url) + '\n')
         ret_info.append("val url: " + str(self.val_url) + '\n')
         ret_info.append("test url: " + str(self.test_url) + '\n\n')
+
+        ret_info.append("filters: " + self.filters + '\n\n')
 
         return ''.join(ret_info)
 

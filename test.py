@@ -15,7 +15,10 @@ def main():
     embedding_params = get_embedding_params(embedding_name)
     embedding_params = None
 
-    tools.train_model(seq2seq_model, hyperparams, corpus_params, embedding_params)
+    error_text = '我在家里一个人学习中文。'
+    tools.train_model(seq2seq_model, hyperparams, corpus_params, embedding_params,
+                      observe=True, error_text=error_text,
+                      beam_width=3, beamsearch_interval=10)
 
 
 if __name__ == '__main__':

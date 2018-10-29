@@ -2,14 +2,19 @@ import os
 import time
 
 import tensorflow as tf
+from keras import backend as K
 from keras import regularizers
 from keras.backend.tensorflow_backend import set_session
-from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from keras.layers import Input, Embedding, TimeDistributed, Dense
 from keras.models import Model
 
+from configs import EmbeddingParams
+from configs import available_len_mode
 from configs import base_params
 from configs import corpus_name_full_abbr, model_name_full_abbr, embedding_name_full_abbr
+from layers import GetPadMask
+from models import beam_search
 from utils import tools, reader
 
 # Specify which GPU card to use.
@@ -22,7 +27,7 @@ config.gpu_options.allow_growth = True
 set_session(tf.Session(config=config))
 
 
-# 测试的时候batch size和seq len随意，word vec dim训练和应用时应一致
+# 测试的时候batch size和seq len随意，token vec dim训练和应用时应一致
 class BasicModel:
     def __init__(self, is_training=True):
         self.is_training = is_training
@@ -33,13 +38,13 @@ class BasicModel:
 
         self.input_len = None
         self.output_len = None
-        self.keep_word_num = None
+        self.keep_token_num = None
         self.vocab_size = None
-        self.word_vec_dim = None
+        self.token_vec_dim = None
         self.batch_size = None
         self.this_model_save_dir = None
 
-        self.pretrained_word_vecs_fname = None
+        self.pretrained_embeddings_fname = None
 
         self.processed_url = None
         self.train_fname = None
@@ -49,6 +54,7 @@ class BasicModel:
         self.model = None
         self.embedding_matrix = None
         self.tokenizer = None
+        self.id2token = None
 
         self.corpus_open_encoding = None
         self.corpus_save_encoding = None
@@ -65,10 +71,10 @@ class BasicModel:
 
     # embedding_params can be None
     def setup(self, hyperparams, corpus_params, embedding_params):
-        if embedding_params is not None:
-            self.pretrained_word_vecs_fname = embedding_params.pretrained_word_vecs_url
-            self.embedding_open_encoding = embedding_params.open_file_encoding
+        if embedding_params is None:
+            embedding_params = EmbeddingParams()
 
+        self.pretrained_embeddings_fname = embedding_params.pretrained_embeddings_url
         self.processed_url = corpus_params.processed_url
         self.train_fname = corpus_params.train_url
         self.val_fname = corpus_params.val_url
@@ -76,6 +82,7 @@ class BasicModel:
 
         self.corpus_open_encoding = corpus_params.open_file_encoding
         self.corpus_save_encoding = corpus_params.save_file_encoding
+        self.embedding_open_encoding = embedding_params.open_file_encoding
         self.general_save_encoding = base_params.GENERAL_SAVE_ENCODING
 
         reader.split_train_val_test(self.processed_url,
@@ -96,16 +103,24 @@ class BasicModel:
         self.corpus_params = corpus_params
         self.embedding_params = embedding_params
 
-        self.keep_word_num = hyperparams.keep_word_num
-        self.word_vec_dim = hyperparams.word_vec_dim
-        self.input_len = hyperparams.input_len
-        self.output_len = hyperparams.output_len
+        if self.hyperparams.len_mode == available_len_mode[0]:
+            self.input_len = hyperparams.input_len
+            self.output_len = hyperparams.output_len
+        elif self.hyperparams.len_mode == available_len_mode[1]:
+            src_tgt_max_len = reader.get_max_len(self.processed_url, self.corpus_open_encoding)
+            self.input_len, self.output_len = src_tgt_max_len[0], src_tgt_max_len[1] - 1
+        else:
+            self.input_len = None
+            self.output_len = None
+
+        self.keep_token_num = hyperparams.keep_token_num
+        self.token_vec_dim = hyperparams.token_vec_dim
         self.batch_size = hyperparams.batch_size
-        self.tokenizer = reader.fit_tokenizer(self.processed_url, self.keep_word_num,
-                                              hyperparams.filters, hyperparams.oov_tag,
-                                              hyperparams.char_level,
+        self.tokenizer = reader.fit_tokenizer(self.processed_url, self.keep_token_num,
+                                              corpus_params.filters, embedding_params.unk_tag,
                                               self.corpus_open_encoding)
         self.vocab_size = len(self.tokenizer.word_index)
+        self.id2token = {v: k for k, v in self.tokenizer.word_index.items()}
 
         self.pad = self.hyperparams.pad
         self.cut = self.hyperparams.cut
@@ -126,8 +141,16 @@ class BasicModel:
         record_url = self.this_model_save_dir + os.path.sep + base_params.TRAIN_RECORD_FNAME
         tools.print_save_str(record_str, record_url)
 
-    def _do_build(self, x_in_vec_seq, x_in_id_seq, y_in_vec_seq, y_in_id_seq):
+    def _do_build(self, x_in_vec_seq, x_in_id_seq, x_mask,
+                  y_in_vec_seq, y_in_id_seq, y_mask):
         raise NotImplementedError()
+
+    def _masked_loss(self, target, preds):
+        y_mask = GetPadMask(self.batch_size)(target)
+        cross_entropy = K.categorical_crossentropy(target, preds)
+        assert K.ndim(cross_entropy) == 2
+        loss = K.sum(cross_entropy * y_mask, axis=1, keepdims=True) / K.sum(y_mask, axis=1, keepdims=True)
+        return K.reshape(loss, [self.batch_size, -1])
 
     def build(self):
         """
@@ -135,37 +158,48 @@ class BasicModel:
         template method pattern
         :return: Model object using the functional API
         """
-        x_in_id_seq = Input(name='x_in', shape=(self.input_len,), dtype='int32')
-        y_in_id_seq = Input(name='y_in', shape=(self.output_len,), dtype='int32')
-        if self.pretrained_word_vecs_fname:
-            word2vec = reader.load_pretrained_word_vecs(self.pretrained_word_vecs_fname)
-            self.embedding_matrix = reader.get_embedding_matrix(word2id=self.tokenizer.word_index,
-                                                                word2vec=word2vec,
-                                                                vec_dim=self.word_vec_dim)
-            # TODO input length of embedding layer
+        # Get done => Not specify the input length of input layer.
+        x_in_id_seq = Input(name='x_in', shape=(None,), dtype='int32')
+        y_in_id_seq = Input(name='y_in', shape=(None,), dtype='int32')
+        if self.pretrained_embeddings_fname:
+            token2vec = reader.load_pretrained_token_vecs(self.pretrained_embeddings_fname)
+            self.embedding_matrix = reader.get_embedding_matrix(token2id=self.tokenizer.word_index,
+                                                                token2vec=token2vec,
+                                                                vec_dim=self.token_vec_dim)
+            # Get done => Not specify the input len of embedding layer.
             embedding = Embedding(input_dim=self.vocab_size + 1,
-                                  output_dim=self.word_vec_dim,
+                                  output_dim=self.token_vec_dim,
                                   weights=[self.embedding_matrix],
-                                  input_length=self.input_len,
-                                  name='pretrained_word_embedding',
+                                  input_length=None,
+                                  name='pretrained_embedding',
                                   trainable=False)
         else:
             embedding = Embedding(input_dim=self.vocab_size + 1,
-                                  output_dim=self.word_vec_dim,
-                                  input_length=self.input_len,
-                                  name='trainable_word_embedding')
+                                  output_dim=self.token_vec_dim,
+                                  name='trainable_embedding')
 
         x_in_vec_seq = embedding(x_in_id_seq)
         y_in_vec_seq = embedding(y_in_id_seq)
         # print(embedding.input_shape)
+        get_pad_mask = GetPadMask()
+        x_mask = get_pad_mask(x_in_id_seq)
+        y_mask = get_pad_mask(y_in_id_seq)
 
-        attn_hidden_seq = self._do_build(x_in_vec_seq, x_in_id_seq, y_in_vec_seq, y_in_id_seq)
+        attn_hidden_seq = self._do_build(x_in_vec_seq, x_in_id_seq, x_mask,
+                                         y_in_vec_seq, y_in_id_seq, y_mask)
         # Apply the same Dense layer instance using same weights to each timestep of input.
         preds = TimeDistributed(Dense(self.vocab_size+1, activation='softmax', name="output_layer",
                                       kernel_regularizer=regularizers.l2(self.hyperparams.kernel_l2_lambda),
                                       bias_regularizer=regularizers.l2(self.hyperparams.bias_l2_lambda),
                                       activity_regularizer=regularizers.l2(self.hyperparams.activity_l2_lambda))
                                 )(attn_hidden_seq)
+
+        # end_id = self.tokenizer.word_index[self.embedding_params.end_tag]
+        # end_id = tf.Variable([end_id], trainable=False)
+        # end_id = K.repeat_elements(end_id, self.batch_size, axis=0)
+        # end_id = K.reshape(end_id, [self.batch_size, 1])
+        # y_in_id_seq = K.reshape(y_in_id_seq, [self.batch_size, -1])
+        # target = concatenate([y_in_id_seq[:, 1:], end_id], axis=-1)
 
         self.model = Model(inputs=[x_in_id_seq, y_in_id_seq], outputs=preds)
 
@@ -184,8 +218,9 @@ class BasicModel:
 
     # TODO 优化算法
     # 动态学习率 => done，在回调中更改学习率
+    # Get done => Masked loss function.
     def compile(self):
-        self.model.compile(loss='categorical_crossentropy',
+        self.model.compile(loss=self._masked_loss,
                            optimizer=self.hyperparams.optimizer,
                            metrics=['accuracy'])
 
@@ -194,7 +229,7 @@ class BasicModel:
         # model_vis_url = self.this_model_save_dir + os.path.sep + params.MODEL_VIS_FNAME
         # plot_model(self.model, to_file=model_vis_url, show_shapes=True, show_layer_names=True)
 
-    def fit_generator(self):
+    def fit_generator(self, observe=False, error_text='', beam_width=3, beamsearch_interval=10):
         train_start = float(time.time())
         early_stopping = EarlyStopping(monitor=self.hyperparams.early_stop_monitor,
                                        patience=self.hyperparams.early_stop_patience,
@@ -210,6 +245,8 @@ class BasicModel:
                                       monitor=self.hyperparams.early_stop_monitor,
                                       mode=self.hyperparams.early_stop_mode,
                                       save_best_only=True, save_weights_only=True, verbose=1)
+        observer = Observer(use_beamsearch=observe, custom_model=self, error_text=error_text,
+                            beam_width=beam_width, beamsearch_interval=beamsearch_interval)
         history = self.model.fit_generator(reader.generate_batch_data_file(self.train_fname,
                                                                            self.tokenizer,
                                                                            self.input_len,
@@ -229,7 +266,7 @@ class BasicModel:
                                            validation_steps=self.val_samples_count / self.batch_size,
                                            steps_per_epoch=self.train_samples_count / self.batch_size,
                                            epochs=self.hyperparams.train_epoch_times, verbose=2,
-                                           callbacks=[model_saver, lr_scheduler, early_stopping])
+                                           callbacks=[model_saver, lr_scheduler, early_stopping, observer])
         tools.show_save_record(self.this_model_save_dir, history, train_start)
 
     # TODO 评价指标
@@ -261,5 +298,29 @@ class BasicModel:
         print("\n================== 加载模型 ==================")
         print('Model\'s weights have been loaded from', model_url)
 
-    def __call__(self, x):
-        return self.model(x)
+    def __call__(self, x, topk):
+        return beam_search.beam_search(self, x, topk)
+
+
+class Observer(Callback):
+    def __init__(self, use_beamsearch, custom_model, error_text,
+                 beam_width=3, beamsearch_interval=10):
+        super(Observer, self).__init__()
+        self.use_beamsearch = use_beamsearch
+        self.custom_model = custom_model
+        self.error_text = error_text
+        self.beam_width = beam_width
+        self.beamsearch_interval = beamsearch_interval
+
+    def on_epoch_end(self, epoch, logs=None):
+        # Get done => Call beam search in callback to observe the process of
+        # improvement of proofreading quality.
+        # Get done => Call beam search once every specified epochs.
+        if self.use_beamsearch:
+            if epoch % self.beamsearch_interval == 0:
+                print(beam_search.beam_search(self.custom_model, self.error_text, self.beam_width))
+
+    def on_train_end(self, logs=None):
+        if self.use_beamsearch:
+            print('==================== Beam search when train end ======================')
+            print(beam_search.beam_search(self.custom_model, self.error_text, self.beam_width))

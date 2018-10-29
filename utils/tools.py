@@ -8,6 +8,55 @@ import matplotlib.pyplot as plt
 from configs import base_params
 
 
+def seq2ids(seq, token2id, embedding_params, maxlen=None):
+    """
+    Convert token seq into token id sequence.
+    Repeat-create the wheel, should use tokenizer.texts_to_sequences()
+    :param seq: token list.
+    :param token2id:
+    :param embedding_params: instance of embeddings configuration class.
+    :param maxlen:
+    :return: token id list.
+    """
+    if seq.__class__ is not list:
+        raise TypeError('In ' + sys._getframe().f_code.co_name +
+                        '() function, input should be a list.')
+    if maxlen is None:
+        maxlen = len(seq)
+    unk_id = token2id[embedding_params.unk_tag]
+    ids = [token2id.get(token, unk_id) for token in seq[:maxlen]]
+    return ids
+
+
+def ids2seq(ids, id2token, embedding_params, return_sen=True):
+    """
+    Convert token id seq or str into token sequence or sentence.
+    :param ids: token id list or str.
+    :param id2token: dict, {id: int => token: str}
+    :param embedding_params:
+    :param return_sen: whether to return a sentence.
+    :return: token list or sentence.
+    """
+    if ids.__class__ is str:
+        ids = ids.split(' ')
+    elif ids.__class__ is not list:
+        raise TypeError('In ' + sys._getframe().f_code.co_name +
+                        '() function, ids should be a list.')
+    ids = list(map(int, ids))
+    unk_symbol = embedding_params.unk_tag
+    seq = [id2token.get(token_id, unk_symbol) for token_id in ids]
+    return ''.join(seq) if return_sen else seq
+
+
+def sen2chars(sen):
+    """
+    Convert sentence to char sequence.
+    :param sen: str, like '今天天气很好'
+    :return: char list, like ['今', '天', '天', '气', '很', '好']
+    """
+    return [token for token in sen if token and not token.isspace()]
+
+
 def get_fnames_under_path(path):
     """
     get filename seq under path.
@@ -26,11 +75,12 @@ def get_fnames_under_path(path):
     return fnames
 
 
-def train_model(seq2seq_model, hyperparams, dataset_params, embedding_params):
+def train_model(seq2seq_model, hyperparams, dataset_params, embedding_params,
+                observe=False, error_text='', beam_width=3, beamsearch_interval=10):
     seq2seq_model.setup(hyperparams, dataset_params, embedding_params)
     seq2seq_model.build()
     seq2seq_model.compile()
-    seq2seq_model.fit_generator()
+    seq2seq_model.fit_generator(observe, error_text, beam_width, beamsearch_interval)
     seq2seq_model.evaluate_generator()
 
 

@@ -8,21 +8,33 @@ class EmbeddingParams:
     def __init__(self):
         self.current_classname = self.__class__.__name__
 
+        self.char_level = False
+
+        self.start_tag = '<start>'
+        self.end_tag = '<end>'
+        self.unk_tag = '<unk>'
+
         self.open_file_encoding = 'utf-8'
         self.save_file_encoding = 'utf-8'
 
         self.pretrained_embeddings_root = os.path.join(base_params.PROJECT_ROOT,
                                                        'data', 'pretrained-embeddings')
-        self.pretrained_word_vecs_url = None
+        self.pretrained_embeddings_url = None
 
     def __str__(self):
         ret_info = list()
+        ret_info.append("char level: " + str(self.char_level) + '\n\n')
+
+        ret_info.append("start tag: " + self.start_tag + '\n')
+        ret_info.append("end tag: " + self.end_tag + '\n')
+        ret_info.append("unk tag: " + self.unk_tag + '\n\n')
+
         ret_info.append("open file encoding: " + self.open_file_encoding + '\n')
         ret_info.append("save file encoding: " + self.save_file_encoding + '\n\n')
 
         ret_info.append('pretrained embeddings root: ' + self.pretrained_embeddings_root + '\n')
-        ret_info.append("pretrained word vectors url: " +
-                        str(self.pretrained_word_vecs_url) + '\n\n')
+        ret_info.append("pretrained embeddings url: " +
+                        str(self.pretrained_embeddings_url) + '\n\n')
 
         return ''.join(ret_info)
 
@@ -32,10 +44,10 @@ class ZhFastTextWiki(EmbeddingParams):
         super(ZhFastTextWiki, self).__init__()
         fast_text_vecs_wiki_zh_dir = os.path.join(self.pretrained_embeddings_root,
                                                   'fast_text_vectors_wiki.zh.vec')
-        self.raw_pretrained_word_vecs_url = os.path.join(fast_text_vecs_wiki_zh_dir,
-                                                         'wiki.zh.vec')
-        self.pretrained_word_vecs_url = os.path.join(fast_text_vecs_wiki_zh_dir,
-                                                     'processed.wiki.zh.vec')
+        self.raw_pretrained_embeddings_url = os.path.join(fast_text_vecs_wiki_zh_dir,
+                                                          'wiki.zh.vec')
+        self.pretrained_embeddings_url = os.path.join(fast_text_vecs_wiki_zh_dir,
+                                                      'processed.wiki.zh.vec')
 
     def __str__(self):
         ret_info = list()
