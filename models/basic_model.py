@@ -75,7 +75,8 @@ class BasicModel:
             embedding_params = EmbeddingParams()
 
         self.pretrained_embeddings_fname = embedding_params.pretrained_embeddings_url
-        self.processed_url = corpus_params.processed_url
+        self.processed_url = corpus_params.processed_url_char \
+            if embedding_params.char_level else corpus_params.processed_url_word
         self.train_fname = corpus_params.train_url
         self.val_fname = corpus_params.val_url
         self.test_fname = corpus_params.test_url

@@ -13,7 +13,8 @@ class CorpusParams:
 
         self.corpus_root = os.path.join(base_params.PROJECT_ROOT, 'data', 'parallel-corpus')
         self.raw_url = None
-        self.processed_url = None
+        self.processed_url_word = None
+        self.processed_url_char = None
         self.train_url = None
         self.val_url = None
         self.test_url = None
@@ -26,7 +27,8 @@ class CorpusParams:
         ret_info.append("save file encoding: " + self.save_file_encoding + '\n\n')
 
         ret_info.append("raw url: " + str(self.raw_url) + '\n')
-        ret_info.append("processed url: " + str(self.processed_url) + '\n')
+        ret_info.append("word level processed url: " + str(self.processed_url_word) + '\n')
+        ret_info.append("char level processed url: " + str(self.processed_url_char) + '\n')
         ret_info.append("train url: " + str(self.train_url) + '\n')
         ret_info.append("val url: " + str(self.val_url) + '\n')
         ret_info.append("test url: " + str(self.test_url) + '\n\n')
@@ -43,7 +45,8 @@ class JustForTest(CorpusParams):
         # just for test
         just_for_test = os.path.join(self.corpus_root, 'just_for_test')
         self.raw_url = just_for_test
-        self.processed_url = just_for_test
+        self.processed_url_word = just_for_test
+        self.processed_url_char = just_for_test
         self.train_url = just_for_test
         self.val_url = just_for_test
         self.test_url = just_for_test
@@ -65,7 +68,8 @@ class NLPCC2018GEC(CorpusParams):
 
         # raw, processed, train, val, test
         self.raw_url = os.path.join(self.raw_data_dir, 'data.train')
-        self.processed_url = os.path.join(self.processed_data_dir, 'data.processed')
+        self.processed_url_word = os.path.join(self.processed_data_dir, 'data.processed.word')
+        self.processed_url_char = os.path.join(self.processed_data_dir, 'data.processed.char')
         self.train_url = os.path.join(self.processed_data_dir, 'gec_train')
         self.val_url = os.path.join(self.processed_data_dir, 'gec_val')
         self.test_url = os.path.join(self.processed_data_dir, 'gec_test')

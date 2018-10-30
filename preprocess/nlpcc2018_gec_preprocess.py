@@ -1,3 +1,5 @@
+import os
+
 import jieba
 
 from configs import EmbeddingParams
@@ -8,9 +10,20 @@ from utils import tools
 # Get done => Whether to cut sentence into character sequence according to
 # `char_level` argument in instance of embedding parameters.
 # Get done => Add start tag and end tag for source and target sentence in train parallel corpus.
-def preprocess(raw_url, processed_url, embedding_params,
-               open_encoding='utf-8', save_encoding='utf-8'):
+def preprocess(corpus_params, embedding_params):
+    raw_url = corpus_params.raw_url
+    open_encoding = corpus_params.open_file_encoding
+    save_encoding = corpus_params.save_file_encoding
     char_level = embedding_params.char_level
+
+    if char_level:
+        processed_url = corpus_params.processed_url_char
+    else:
+        processed_url = corpus_params.processed_url_word
+    processed_dir = os.path.dirname(processed_url)
+    if not os.path.exists(processed_dir):
+        os.makedirs(processed_dir)
+
     with open(raw_url, 'r', encoding=open_encoding) as raw_file, \
             open(processed_url, 'w', encoding=save_encoding) as processed_file:
         line_count = 0
@@ -59,5 +72,4 @@ def preprocess(raw_url, processed_url, embedding_params,
 
 
 if __name__ == '__main__':
-    nlpcc_2018_gec = NLPCC2018GEC()
-    preprocess(nlpcc_2018_gec.raw_url, nlpcc_2018_gec.processed_url, EmbeddingParams())
+    preprocess(NLPCC2018GEC(), EmbeddingParams())
