@@ -113,6 +113,7 @@ class AttnSeq2SeqHParams(BasicHParams):
         super(AttnSeq2SeqHParams, self).__init__()
 
         self.rnn = available_RNN[1]
+        self.keep_token_num = 10000
 
         self.encoder_layer_num = 1
         self.decoder_layer_num = 1
@@ -131,7 +132,7 @@ class AttnSeq2SeqHParams(BasicHParams):
         self.early_stop_patience = 20
 
         # The max value limited by memory including graphics card.
-        self.batch_size = 256
+        self.batch_size = 192
 
     def __str__(self):
         ret_info = list()
