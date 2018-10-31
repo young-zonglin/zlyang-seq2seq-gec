@@ -120,8 +120,9 @@ class BasicModel:
         self.tokenizer = reader.fit_tokenizer(self.processed_url, self.keep_token_num,
                                               corpus_params.filters, embedding_params.unk_tag,
                                               self.corpus_open_encoding)
-        self.vocab_size = len(self.tokenizer.word_index)
-        self.id2token = {v: k for k, v in self.tokenizer.word_index.items()}
+        # Actually word_index dict of tokenizer instance includes all words.
+        self.vocab_size = min(len(self.tokenizer.word_index), self.keep_token_num+1)
+        self.id2token = self.tokenizer.index_word
 
         self.pad = self.hyperparams.pad
         self.cut = self.hyperparams.cut
@@ -266,7 +267,7 @@ class BasicModel:
                                                                                            self.corpus_open_encoding),
                                            validation_steps=self.val_samples_count / self.batch_size,
                                            steps_per_epoch=self.train_samples_count / self.batch_size,
-                                           epochs=self.hyperparams.train_epoch_times, verbose=2,
+                                           epochs=self.hyperparams.train_epoch_times, verbose=1,
                                            callbacks=[model_saver, lr_scheduler, early_stopping, observer])
         tools.show_save_record(self.this_model_save_dir, history, train_start)
 
@@ -280,7 +281,8 @@ class BasicModel:
                                                                                          self.vocab_size,
                                                                                          self.pad, self.cut,
                                                                                          self.corpus_open_encoding),
-                                               steps=self.test_samples_count / self.batch_size)
+                                               steps=self.test_samples_count / self.batch_size,
+                                               verbose=1)
         record_info = list()
         record_info.append("\n================== 性能评估 ==================\n")
         record_info.append("%s: %.4f\n" % (self.model.metrics_names[0], scores[0]))
