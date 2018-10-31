@@ -158,7 +158,8 @@ def split_train_val_test(raw_url, train_fname, val_fname, test_fname,
         elif os.path.isfile(raw_url):
             with open(raw_url, 'r', encoding=open_encoding) as raw_file:
                 for line in raw_file:
-                    if line == '' or line == '\n':
+                    line = line.strip().replace('\n', '')
+                    if line == '':
                         continue
                     rand_value = rdm.rand()
                     if rand_value >= 0.2:
@@ -208,8 +209,9 @@ def count_lines(url, open_encoding='utf-8'):
                 line_count += 1
     else:
         with open(url, 'r', encoding=open_encoding) as file:
-            for _ in file:
-                line_count += 1
+            for line in file:
+                if line != '\n' and line != '':
+                    line_count += 1
     return line_count
 
 
@@ -267,11 +269,12 @@ def generate_in_out_pair_file(fname, tokenizer, open_encoding='utf-8'):
     while 1:
         with open(fname, 'r', encoding=open_encoding) as file:
             for line in file:
-                if line and line != '\n':
+                line = line.replace('\n', '').strip()
+                if line:
                     in_out_pair = line.split(base_params.SEPARATOR)
                     if len(in_out_pair) != 2:
                         continue
-                    source, target = in_out_pair[0].strip(), in_out_pair[1].strip().replace('\n', '')
+                    source, target = in_out_pair[0].strip(), in_out_pair[1].strip()
                     encodeds = tokenizer.texts_to_sequences([source, target])
                     yield encodeds[0], encodeds[1]
 
