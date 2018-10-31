@@ -20,6 +20,7 @@ class LRSchedulerDoNothing(Callback):
     def __init__(self):
         super(LRSchedulerDoNothing, self).__init__()
 
+
 available_len_mode = ['fixed', 'full_len', 'batch_len']
 
 
@@ -100,6 +101,7 @@ class BasicHParams:
         ret_info.append("cut: " + self.cut + '\n\n')
         return ''.join(ret_info)
 
+
 available_RNN = ['LSTM', 'GRU', 'CuDNNLSTM']
 
 
@@ -128,7 +130,8 @@ class AttnSeq2SeqHParams(BasicHParams):
         self.early_stop_monitor = 'val_loss'
         self.early_stop_patience = 20
 
-        self.batch_size = 512
+        # The max value limited by memory including graphics card.
+        self.batch_size = 256
 
     def __str__(self):
         ret_info = list()
