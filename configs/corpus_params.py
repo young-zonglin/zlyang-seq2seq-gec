@@ -10,28 +10,40 @@ class CorpusParams:
 
         self.open_file_encoding = 'utf-8'
         self.save_file_encoding = 'utf-8'
+        self.is_latin = False
 
         self.corpus_root = os.path.join(base_params.PROJECT_ROOT, 'data', 'parallel-corpus')
         self.raw_url = None
+
         self.processed_url_word = None
+        self.train_url_word = None
+        self.val_url_word = None
+        self.test_url_word = None
+
         self.processed_url_char = None
-        self.train_url = None
-        self.val_url = None
-        self.test_url = None
+        self.train_url_char = None
+        self.val_url_char = None
+        self.test_url_char = None
 
         self.filters = ''
 
     def __str__(self):
         ret_info = list()
         ret_info.append("open file encoding: " + self.open_file_encoding + '\n')
-        ret_info.append("save file encoding: " + self.save_file_encoding + '\n\n')
+        ret_info.append("save file encoding: " + self.save_file_encoding + '\n')
+        ret_info.append("is latin language: " + str(self.is_latin) + '\n\n')
 
-        ret_info.append("raw url: " + str(self.raw_url) + '\n')
+        ret_info.append("raw url: " + str(self.raw_url) + '\n\n')
+
         ret_info.append("word level processed url: " + str(self.processed_url_word) + '\n')
+        ret_info.append("word level train url: " + str(self.train_url_word) + '\n')
+        ret_info.append("word level val url: " + str(self.val_url_word) + '\n')
+        ret_info.append("word level test url: " + str(self.test_url_word) + '\n\n')
+
         ret_info.append("char level processed url: " + str(self.processed_url_char) + '\n')
-        ret_info.append("train url: " + str(self.train_url) + '\n')
-        ret_info.append("val url: " + str(self.val_url) + '\n')
-        ret_info.append("test url: " + str(self.test_url) + '\n\n')
+        ret_info.append("char level train url: " + str(self.train_url_char) + '\n')
+        ret_info.append("char level val url: " + str(self.val_url_char) + '\n')
+        ret_info.append("char level test url: " + str(self.test_url_char) + '\n\n')
 
         ret_info.append("filters: " + self.filters + '\n\n')
 
@@ -43,13 +55,21 @@ class JustForTest(CorpusParams):
         super(JustForTest, self).__init__()
 
         # just for test
-        just_for_test = os.path.join(self.corpus_root, 'just_for_test')
-        self.raw_url = just_for_test
-        self.processed_url_word = just_for_test
-        self.processed_url_char = just_for_test
-        self.train_url = just_for_test
-        self.val_url = just_for_test
-        self.test_url = just_for_test
+        just_for_test_dir = os.path.join(self.corpus_root, 'just-for-test')
+        self.raw_data_dir = os.path.join(just_for_test_dir, 'raw_data')
+        self.processed_data_dir = os.path.join(just_for_test_dir, 'processed_data')
+
+        self.raw_url = os.path.join(self.raw_data_dir, 'toy.data.train')
+
+        self.processed_url_word = os.path.join(self.processed_data_dir, 'toy.data.processed.word')
+        self.train_url_word = os.path.join(self.processed_data_dir, 'toy_train.word')
+        self.val_url_word = os.path.join(self.processed_data_dir, 'toy_val.word')
+        self.test_url_word = os.path.join(self.processed_data_dir, 'toy_test.word')
+
+        self.processed_url_char = os.path.join(self.processed_data_dir, 'toy.data.processed.char')
+        self.train_url_char = os.path.join(self.processed_data_dir, 'toy_train.char')
+        self.val_url_char = os.path.join(self.processed_data_dir, 'toy_val.char')
+        self.test_url_char = os.path.join(self.processed_data_dir, 'toy_test.char')
 
     def __str__(self):
         ret_info = list()
@@ -68,11 +88,16 @@ class NLPCC2018GEC(CorpusParams):
 
         # raw, processed, train, val, test
         self.raw_url = os.path.join(self.raw_data_dir, 'data.train')
+
         self.processed_url_word = os.path.join(self.processed_data_dir, 'data.processed.word')
+        self.train_url_word = os.path.join(self.processed_data_dir, 'gec_train.word')
+        self.val_url_word = os.path.join(self.processed_data_dir, 'gec_val.word')
+        self.test_url_word = os.path.join(self.processed_data_dir, 'gec_test.word')
+
         self.processed_url_char = os.path.join(self.processed_data_dir, 'data.processed.char')
-        self.train_url = os.path.join(self.processed_data_dir, 'gec_train')
-        self.val_url = os.path.join(self.processed_data_dir, 'gec_val')
-        self.test_url = os.path.join(self.processed_data_dir, 'gec_test')
+        self.train_url_char = os.path.join(self.processed_data_dir, 'gec_train.char')
+        self.val_url_char = os.path.join(self.processed_data_dir, 'gec_val.char')
+        self.test_url_char = os.path.join(self.processed_data_dir, 'gec_test.char')
 
     def __str__(self):
         ret_info = list()

@@ -22,7 +22,8 @@ def apply():
     seq2seq_model.evaluate_generator()
 
     error_text = '我在家里一个人学习中文。'
-    correct_text = beam_search(custom_model=seq2seq_model, error_text=error_text, beam_width=5)
+    correct_text = beam_search(custom_model=seq2seq_model, error_text=error_text,
+                               beam_width=5, is_latin=False)
     print('=======================================')
     print('error text:', error_text)
     print('correct text:', correct_text)

@@ -57,7 +57,6 @@ class BasicModel:
         self.id2token = None
 
         self.corpus_open_encoding = None
-        self.corpus_save_encoding = None
         self.embedding_open_encoding = None
         self.general_save_encoding = None
 
@@ -73,22 +72,22 @@ class BasicModel:
     def setup(self, hyperparams, corpus_params, embedding_params):
         if embedding_params is None:
             embedding_params = EmbeddingParams()
-
         self.pretrained_embeddings_fname = embedding_params.pretrained_embeddings_url
-        self.processed_url = corpus_params.processed_url_char \
-            if embedding_params.char_level else corpus_params.processed_url_word
-        self.train_fname = corpus_params.train_url
-        self.val_fname = corpus_params.val_url
-        self.test_fname = corpus_params.test_url
+
+        if embedding_params.char_level:
+            self.processed_url = corpus_params.processed_url_char
+            self.train_fname = corpus_params.train_url_char
+            self.val_fname = corpus_params.val_url_char
+            self.test_fname = corpus_params.test_url_char
+        else:
+            self.processed_url = corpus_params.processed_url_word
+            self.train_fname = corpus_params.train_url_word
+            self.val_fname = corpus_params.val_url_word
+            self.test_fname = corpus_params.test_url_word
 
         self.corpus_open_encoding = corpus_params.open_file_encoding
-        self.corpus_save_encoding = corpus_params.save_file_encoding
         self.embedding_open_encoding = embedding_params.open_file_encoding
         self.general_save_encoding = base_params.GENERAL_SAVE_ENCODING
-
-        reader.split_train_val_test(self.processed_url,
-                                    self.train_fname, self.val_fname, self.test_fname,
-                                    self.corpus_open_encoding, self.corpus_save_encoding)
 
         run_which_model = model_name_full_abbr[self.__class__.__name__]
         corpus_name = corpus_name_full_abbr[corpus_params.__class__.__name__]
@@ -231,7 +230,8 @@ class BasicModel:
         # model_vis_url = self.this_model_save_dir + os.path.sep + params.MODEL_VIS_FNAME
         # plot_model(self.model, to_file=model_vis_url, show_shapes=True, show_layer_names=True)
 
-    def fit_generator(self, observe=False, error_text='', beam_width=3, beamsearch_interval=10):
+    def fit_generator(self, observe=False, error_text='',
+                      beam_width=3, beamsearch_interval=10, is_latin=False):
         train_start = float(time.time())
         early_stopping = EarlyStopping(monitor=self.hyperparams.early_stop_monitor,
                                        patience=self.hyperparams.early_stop_patience,
@@ -248,7 +248,8 @@ class BasicModel:
                                       mode=self.hyperparams.early_stop_mode,
                                       save_best_only=True, save_weights_only=True, verbose=1)
         observer = Observer(use_beamsearch=observe, custom_model=self, error_text=error_text,
-                            beam_width=beam_width, beamsearch_interval=beamsearch_interval)
+                            beam_width=beam_width, beamsearch_interval=beamsearch_interval,
+                            is_latin=is_latin)
         history = self.model.fit_generator(reader.generate_batch_data_file(self.train_fname,
                                                                            self.tokenizer,
                                                                            self.input_len,
@@ -301,29 +302,33 @@ class BasicModel:
         print("\n================== 加载模型 ==================")
         print('Model\'s weights have been loaded from', model_url)
 
-    def __call__(self, x, topk):
-        return beam_search.beam_search(self, x, topk)
+    def __call__(self, x, topk, is_latin):
+        return beam_search.beam_search(self, x, topk, is_latin)
 
 
 class Observer(Callback):
     def __init__(self, use_beamsearch, custom_model, error_text,
-                 beam_width=3, beamsearch_interval=10):
+                 beam_width=3, beamsearch_interval=10, is_latin=False):
         super(Observer, self).__init__()
         self.use_beamsearch = use_beamsearch
         self.custom_model = custom_model
         self.error_text = error_text
         self.beam_width = beam_width
         self.beamsearch_interval = beamsearch_interval
+        self.is_latin = is_latin
 
     def on_epoch_end(self, epoch, logs=None):
         # Get done => Call beam search in callback to observe the process of
         # improvement of proofreading quality.
         # Get done => Call beam search once every specified epochs.
+        # TODO save beam search result to record file.
         if self.use_beamsearch:
             if epoch % self.beamsearch_interval == 0:
-                print(beam_search.beam_search(self.custom_model, self.error_text, self.beam_width))
+                print(beam_search.beam_search(self.custom_model, self.error_text,
+                                              self.beam_width, self.is_latin))
 
     def on_train_end(self, logs=None):
         if self.use_beamsearch:
             print('==================== Beam search when train end ======================')
-            print(beam_search.beam_search(self.custom_model, self.error_text, self.beam_width))
+            print(beam_search.beam_search(self.custom_model, self.error_text,
+                                          self.beam_width, self.is_latin))

@@ -32,13 +32,18 @@ def load_vecs(fname, head_n=None, open_encoding='utf-8'):
         print(error)
         return token2vec
 
+    first_line = fin.readline()
+    tmp = first_line.split()
+    words_num, vec_dim = int(tmp[0]), int(tmp[1])
     for line in fin:
         # load head n embedding vectors
         if head_n and head_n.__class__ == int:
             line_count += 1
             if line_count > head_n:
                 break
-        tokens = line.strip().replace('\n', '').split(' ')
+        tokens = line.split()
+        if len(tokens) != vec_dim+1:
+            continue
         # map是一个类，Python中的高阶函数，类似于Scala中的array.map(func)
         # 将传入的函数作用于传入的可迭代对象（例如list）的每一个元素之上
         # float也是一个类
@@ -122,13 +127,13 @@ def get_needed_vectors(url, full_vecs_fname, needed_vecs_fname,
     return needed_token2vec
 
 
-def split_train_val_test(raw_url, train_fname, val_fname, test_fname,
+def split_train_val_test(raw_url, train_fname, val_fname, test_fname, force_todo=False,
                          open_encoding='utf-8', save_encoding='utf-8'):
     """
     randomly split raw data corpus to train data, val data and test data.
     train : val : test = 8:1:1
     test data used for unbiased estimation of model performance.
-    :return: None
+    :return: Nothing to return.
     """
     current_func_name = sys._getframe().f_code.co_name
     if raw_url in [train_fname, val_fname, test_fname]:
@@ -136,7 +141,7 @@ def split_train_val_test(raw_url, train_fname, val_fname, test_fname,
         print('Raw path and train, val, test data filenames are the same.')
         print('No split.')
         return
-    if os.path.exists(train_fname) and os.path.exists(val_fname) and os.path.exists(test_fname):
+    if not force_todo and os.path.exists(train_fname) and os.path.exists(val_fname) and os.path.exists(test_fname):
         print('\n======== In', current_func_name, '========')
         print('Train, val and test data already exists.')
         return

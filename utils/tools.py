@@ -48,12 +48,15 @@ def ids2seq(ids, id2token, embedding_params, return_sen=True):
     return ''.join(seq) if return_sen else seq
 
 
-def sen2chars(sen):
+def sen2chars(sen, is_latin=False):
     """
     Convert sentence to char sequence.
     :param sen: str, like '今天天气很好'
+    :param is_latin: whether to transform whitespace to underline.
     :return: char list, like ['今', '天', '天', '气', '很', '好']
     """
+    if is_latin:
+        sen = sen.replace(' ', '_')
     return [token for token in sen if token and not token.isspace()]
 
 
@@ -76,11 +79,11 @@ def get_fnames_under_path(path):
 
 
 def train_model(seq2seq_model, hyperparams, dataset_params, embedding_params,
-                observe=False, error_text='', beam_width=3, beamsearch_interval=10):
+                observe=False, error_text='', beam_width=3, beamsearch_interval=10, is_latin=False):
     seq2seq_model.setup(hyperparams, dataset_params, embedding_params)
     seq2seq_model.build()
     seq2seq_model.compile()
-    seq2seq_model.fit_generator(observe, error_text, beam_width, beamsearch_interval)
+    seq2seq_model.fit_generator(observe, error_text, beam_width, beamsearch_interval, is_latin)
     seq2seq_model.evaluate_generator()
 
 
@@ -128,7 +131,7 @@ def plot_figure(model_save_dir, figure_name, x_label, y_label, *args):
     :param x_label: x轴轴标
     :param y_label: y轴轴标
     :param args: 变长参数，即参数数目可变
-    :return: None
+    :return: Nothing to return.
     """
     colors = ['r', 'b', 'g', 'y', 'k']
     styles = ['-', '--', '-.', ':']

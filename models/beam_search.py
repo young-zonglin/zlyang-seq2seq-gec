@@ -8,12 +8,14 @@ from utils import tools
 
 # Get done => beam search
 # TODO <start> <end> <unk>
-def beam_search(custom_model, error_text, beam_width=3):
+# TODO recover from unk symbol.
+def beam_search(custom_model, error_text, beam_width=3, is_latin=False):
     """
     Beam search decoding to generate correct text.
     :param custom_model:
     :param error_text: str, like "今天天气很耗"
     :param beam_width:
+    :param is_latin:
     :return: correct text.
     """
     if error_text.__class__ != str:
@@ -22,7 +24,7 @@ def beam_search(custom_model, error_text, beam_width=3):
 
     beam_width = custom_model.vocab_size if beam_width > custom_model.vocab_size else beam_width
     if custom_model.embedding_params.char_level:
-        error_text = tools.sen2chars(error_text)
+        error_text = tools.sen2chars(error_text, is_latin)
     else:
         error_text = [token for token in jieba.lcut(error_text) if not token.isspace()]
     error_text = ' '.join(error_text)

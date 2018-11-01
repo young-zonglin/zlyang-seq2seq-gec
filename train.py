@@ -17,7 +17,8 @@ def train():
     error_text = '她也就是说爱撒娇。'
     tools.train_model(seq2seq_model, hyperparams, corpus_params, embedding_params,
                       observe=True, error_text=error_text,
-                      beam_width=5, beamsearch_interval=20)
+                      beam_width=5, beamsearch_interval=1, is_latin=False)
+    # TODO use train and val data to train model again after params tuned.
 
 
 if __name__ == '__main__':
