@@ -321,14 +321,27 @@ class Observer(Callback):
         # Get done => Call beam search in callback to observe the process of
         # improvement of proofreading quality.
         # Get done => Call beam search once every specified epochs.
-        # TODO save beam search result to record file.
+        # Get done => Save beam search result to record file.
         if self.use_beamsearch:
             if epoch % self.beamsearch_interval == 0:
-                print(beam_search.beam_search(self.custom_model, self.error_text,
-                                              self.beam_width, self.is_latin))
+                best_output = beam_search.beam_search(self.custom_model, self.error_text,
+                                                      self.beam_width, self.is_latin)
+                record_info = list()
+                record_info.append('\n======== Beam search when epoch '+str(epoch+1)+' end ========\n')
+                record_info.append(self.error_text + ' => ' + best_output + '\n')
+                record_str = ''.join(record_info)
+                record_url = os.path.join(self.custom_model.this_model_save_dir,
+                                          base_params.TRAIN_RECORD_FNAME)
+                tools.print_save_str(record_str, record_url)
 
     def on_train_end(self, logs=None):
         if self.use_beamsearch:
-            print('==================== Beam search when train end ======================')
-            print(beam_search.beam_search(self.custom_model, self.error_text,
-                                          self.beam_width, self.is_latin))
+            best_output = beam_search.beam_search(self.custom_model, self.error_text,
+                                                  self.beam_width, self.is_latin)
+            record_info = list()
+            record_info.append('\n======== Beam search when train end ========\n')
+            record_info.append(self.error_text + ' => ' + best_output + '\n')
+            record_str = ''.join(record_info)
+            record_url = os.path.join(self.custom_model.this_model_save_dir,
+                                      base_params.TRAIN_RECORD_FNAME)
+            tools.print_save_str(record_str, record_url)

@@ -127,52 +127,81 @@ def get_needed_vectors(url, full_vecs_fname, needed_vecs_fname,
     return needed_token2vec
 
 
-def split_train_val_test(raw_url, train_fname, val_fname, test_fname, force_todo=False,
-                         open_encoding='utf-8', save_encoding='utf-8'):
+def split_train_val_test(operation, corpus_params, embedding_params, force_todo=False):
     """
-    randomly split raw data corpus to train data, val data and test data.
+    Apply `operation` function passed in randomly split
+      raw data corpus to train data, val data and test data.
+    `operation` function should receive four params:
+      line, file, embedding_params and is_latin.
     train : val : test = 8:1:1
     test data used for unbiased estimation of model performance.
     :return: Nothing to return.
     """
+    is_latin = corpus_params.is_latin
+    open_encoding = corpus_params.open_file_encoding
+    save_encoding = corpus_params.save_file_encoding
+    raw_url = corpus_params.raw_url
+    if embedding_params.char_level:
+        processed_url = corpus_params.processed_url_char
+        train_fname = corpus_params.train_url_char
+        val_fname = corpus_params.val_url_char
+        test_fname = corpus_params.test_url_char
+    else:
+        processed_url = corpus_params.processed_url_word
+        train_fname = corpus_params.train_url_word
+        val_fname = corpus_params.val_url_word
+        test_fname = corpus_params.test_url_word
+
     current_func_name = sys._getframe().f_code.co_name
-    if raw_url in [train_fname, val_fname, test_fname]:
+    if raw_url in [processed_url, train_fname, val_fname, test_fname]:
         print('\n======== In', current_func_name, '========')
-        print('Raw path and train, val, test data filenames are the same.')
+        print('Raw data and processed, train, val, test data filenames are the same.')
         print('No split.')
         return
-    if not force_todo and os.path.exists(train_fname) and os.path.exists(val_fname) and os.path.exists(test_fname):
+    if not force_todo and os.path.exists(train_fname) \
+            and os.path.exists(val_fname) and os.path.exists(test_fname):
         print('\n======== In', current_func_name, '========')
         print('Train, val and test data already exists.')
         return
-    with open(train_fname, 'w', encoding=save_encoding) as train_file, \
+
+    def random_split():
+        nonlocal line_cnt
+        line_cnt += 1
+        if line_cnt % 10000 == 0:
+            print(line_cnt, 'lines have been processed.')
+
+        operation(line, processed_file, embedding_params, is_latin)
+        rand_value = rdm.rand()
+        if rand_value >= 0.2:
+            operation(line, train_file, embedding_params, is_latin)
+        elif 0.1 <= rand_value < 0.2:
+            operation(line, val_file, embedding_params, is_latin)
+        else:
+            operation(line, test_file, embedding_params, is_latin)
+
+    processed_data_dir = os.path.dirname(processed_url)
+    if not os.path.exists(processed_data_dir):
+        os.makedirs(processed_data_dir)
+    with open(processed_url, 'w', encoding=save_encoding) as processed_file,\
+            open(train_fname, 'w', encoding=save_encoding) as train_file, \
             open(val_fname, 'w', encoding=save_encoding) as val_file, \
             open(test_fname, 'w', encoding=save_encoding) as test_file:
+        line_cnt = 0
         if os.path.isdir(raw_url):
             for text in generate_text_from_corpus(raw_url, open_encoding):
                 for line in match_newline_pattern.split(text):
                     if line == '':
                         continue
-                    rand_value = rdm.rand()
-                    if rand_value >= 0.2:
-                        train_file.write(line + '\n')
-                    elif 0.1 <= rand_value < 0.2:
-                        val_file.write(line + '\n')
-                    else:
-                        test_file.write(line + '\n')
+                    random_split()
         elif os.path.isfile(raw_url):
             with open(raw_url, 'r', encoding=open_encoding) as raw_file:
                 for line in raw_file:
                     line = line.strip().replace('\n', '')
                     if line == '':
                         continue
-                    rand_value = rdm.rand()
-                    if rand_value >= 0.2:
-                        train_file.write(line + '\n')
-                    elif 0.1 <= rand_value < 0.2:
-                        val_file.write(line + '\n')
-                    else:
-                        test_file.write(line + '\n')
+                    random_split()
+        print('=================================================')
+        print(line_cnt, 'lines have been processed finally.')
 
 
 def load_pretrained_token_vecs(fname, open_encoding='utf-8'):
@@ -340,3 +369,12 @@ def generate_batch_data_file(fname, tokenizer, input_len, output_len, batch_size
             yield x, y
             in_out_pairs = list()
             batch_samples_count = 0
+
+
+if __name__ == '__main__':
+    embeddings_fname = 'E:\PyCharmProjects\zlyang-seq2seq\data\pretrained-embeddings' \
+                       '\\tencent_ailab_zh_embeddings\\tencent.ailab.zh.vecs'
+    word2vec = load_vecs(embeddings_fname, head_n=170000)
+    print('read %d words' % len(word2vec))
+    object_size = tools.byte_to_gb(sys.getsizeof(word2vec))
+    print('word2vec dict memory size: %.6f GB' % object_size)

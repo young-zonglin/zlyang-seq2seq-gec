@@ -213,6 +213,27 @@ def print_save_str(to_print_save, save_url, save_encoding='utf-8'):
         file.write(to_print_save)
 
 
+def get_ndarray_memory_size(ndarray):
+    """
+    calculate memory size of a ndarray.
+    :param ndarray: nd numpy array
+    :return: object_size(in GB), values_size(in GB), item_size(in byte)
+    """
+    object_size = byte_to_gb(sys.getsizeof(ndarray))
+    values_size = byte_to_gb(ndarray.nbytes)
+    item_size = ndarray.itemsize
+    return object_size, values_size, item_size
+
+
+def byte_to_gb(byte_number):
+    """
+    convert byte to GB
+    :param byte_number: byte number
+    :return: GB
+    """
+    return byte_number / (1024 ** 3)
+
+
 if __name__ == '__main__':
     # ========== test remove_symbols() func ==========
     # str1 = "'Random Number' is what I don't like at all."

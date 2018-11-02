@@ -55,21 +55,14 @@ class JustForTest(CorpusParams):
         super(JustForTest, self).__init__()
 
         # just for test
-        just_for_test_dir = os.path.join(self.corpus_root, 'just-for-test')
-        self.raw_data_dir = os.path.join(just_for_test_dir, 'raw_data')
-        self.processed_data_dir = os.path.join(just_for_test_dir, 'processed_data')
+        # train, val and test data are the same.
+        just_for_test = os.path.join(self.corpus_root, 'just_for_test')
 
-        self.raw_url = os.path.join(self.raw_data_dir, 'toy.data.train')
-
-        self.processed_url_word = os.path.join(self.processed_data_dir, 'toy.data.processed.word')
-        self.train_url_word = os.path.join(self.processed_data_dir, 'toy_train.word')
-        self.val_url_word = os.path.join(self.processed_data_dir, 'toy_val.word')
-        self.test_url_word = os.path.join(self.processed_data_dir, 'toy_test.word')
-
-        self.processed_url_char = os.path.join(self.processed_data_dir, 'toy.data.processed.char')
-        self.train_url_char = os.path.join(self.processed_data_dir, 'toy_train.char')
-        self.val_url_char = os.path.join(self.processed_data_dir, 'toy_val.char')
-        self.test_url_char = os.path.join(self.processed_data_dir, 'toy_test.char')
+        self.raw_url = just_for_test
+        self.processed_url_word = just_for_test
+        self.train_url_word = just_for_test
+        self.val_url_word = just_for_test
+        self.test_url_word = just_for_test
 
     def __str__(self):
         ret_info = list()
