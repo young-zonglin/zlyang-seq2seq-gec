@@ -97,16 +97,16 @@ def get_needed_vectors(corpus_params, embedding_params):
     :return: dict, {token: str => vector: float list}
     """
     vec_dim = embedding_params.vec_dim
-    train_fname = corpus_params.train_url_char \
+    processed_fname = corpus_params.processed_url_char \
         if embedding_params.char_level \
-        else corpus_params.train_url_word
+        else corpus_params.processed_url_word
     full_vecs_fname = embedding_params.raw_pretrained_embeddings_url
     needed_vecs_fname = embedding_params.pretrained_embeddings_url
     corpus_open_encoding = corpus_params.open_file_encoding
     embedding_open_encoding = embedding_params.open_file_encoding
     embedding_save_encoding = embedding_params.save_file_encoding
 
-    all_tokens = read_tokens(train_fname, corpus_open_encoding)
+    all_tokens = read_tokens(processed_fname, corpus_open_encoding)
     needed_token2vec = load_vecs(needed_vecs_fname, vec_dim,
                                  open_encoding=embedding_open_encoding)
 
@@ -232,16 +232,19 @@ def load_pretrained_token_vecs(fname, vec_dim, open_encoding='utf-8'):
     return token2vec
 
 
-def get_embedding_matrix(token2id, token2vec, vec_dim):
+def get_embedding_matrix(token2id, token2vec, vocab_size, vec_dim):
     """
     turn token2vec dict to embedding matrix
     :param token2id: dict
     :param token2vec: dict
+    :param vocab_size: make sure the shapes of the embedding matrix and the Embedding layer match.
     :param vec_dim: embedding dim
     :return: embedding matrix
     """
-    embedding_matrix = np.zeros((len(token2id) + 1, vec_dim))
+    embedding_matrix = np.zeros((vocab_size + 1, vec_dim))
     for token, index in token2id.items():
+        if index > vocab_size:
+            continue
         # tokens not found in token2vec will be all-zeros.
         embedding = token2vec.get(token)
         if embedding is not None:

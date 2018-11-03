@@ -175,8 +175,9 @@ class BasicModel:
                                                           self.embedding_open_encoding)
             self.embedding_matrix = reader.get_embedding_matrix(token2id=self.tokenizer.word_index,
                                                                 token2vec=token2vec,
+                                                                vocab_size=self.vocab_size,
                                                                 vec_dim=self.token_vec_dim)
-            # TODO: Does the shape of the embedding matrix need to match the Embedding layer?
+            # Get done => The shapes of the embedding matrix and the Embedding layer should match.
             # Get done => Not specify the input len of embedding layer.
             # Set `trainable=True` due to word vec of unk symbol cannot be found.
             # The word vectors will get fine tuned for the specific NLP task during training.
