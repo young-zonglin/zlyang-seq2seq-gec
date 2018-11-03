@@ -25,7 +25,8 @@ class CorpusParams:
         self.val_url_char = None
         self.test_url_char = None
 
-        self.filters = ''
+        # Get done => Specify the default filters for `Tokenizer`.
+        self.filters = '\t\n'
 
     def __str__(self):
         ret_info = list()

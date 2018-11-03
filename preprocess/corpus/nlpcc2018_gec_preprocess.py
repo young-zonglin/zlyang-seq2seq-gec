@@ -1,7 +1,7 @@
 import jieba
 
-from configs import EmbeddingParams
 from configs import NLPCC2018GEC
+from configs import TencentAIZhEmbeddings
 from utils import split_train_val_test
 from utils import tools
 
@@ -62,4 +62,4 @@ def preprocess(corpus_params, embedding_params, force_todo=True):
 
 
 if __name__ == '__main__':
-    preprocess(NLPCC2018GEC(), EmbeddingParams(), force_todo=True)
+    preprocess(NLPCC2018GEC(), TencentAIZhEmbeddings(), force_todo=True)

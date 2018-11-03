@@ -7,7 +7,6 @@ from utils import tools
 
 
 # Get done => beam search
-# TODO <start> <end> <unk>
 # TODO recover from unk symbol.
 def beam_search(custom_model, error_text, beam_width=3, is_latin=False):
     """

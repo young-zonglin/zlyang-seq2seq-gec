@@ -9,16 +9,18 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.preprocessing.text import Tokenizer
 from keras.utils import to_categorical
 
+from configs import available_embeddings, get_embedding_params
 from configs import base_params
 from utils import tools
 
 match_newline_pattern = re.compile('\n+')
 
 
-def load_vecs(fname, head_n=None, open_encoding='utf-8'):
+def load_vecs(fname, vec_dim, head_n=None, open_encoding='utf-8'):
     """
     装载前N个嵌入向量
     :param fname:
+    :param vec_dim: dim of word vec
     :param head_n: head n embedding vectors will be loaded
     :param open_encoding: open file encoding
     :return: dict, {token: str => vector: float list}
@@ -32,9 +34,6 @@ def load_vecs(fname, head_n=None, open_encoding='utf-8'):
         print(error)
         return token2vec
 
-    first_line = fin.readline()
-    tmp = first_line.split()
-    words_num, vec_dim = int(tmp[0]), int(tmp[1])
     for line in fin:
         # load head n embedding vectors
         if head_n and head_n.__class__ == int:
@@ -90,16 +89,26 @@ def read_tokens(url, open_encoding='utf-8'):
     return ret_tokens
 
 
-def get_needed_vectors(url, full_vecs_fname, needed_vecs_fname,
-                       open_encoding='utf-8', save_encoding='utf-8'):
+def get_needed_vectors(corpus_params, embedding_params):
     """
-    1. Read all distinct tokens from processed train files.
+    1. Read all distinct tokens from train file.
     2. If token not in needed token vectors file, get it's vector from full token vectors file.
     3. Return needed token vectors dict.
     :return: dict, {token: str => vector: float list}
     """
-    all_tokens = read_tokens(url, open_encoding)
-    needed_token2vec = load_vecs(needed_vecs_fname, open_encoding=open_encoding)
+    vec_dim = embedding_params.vec_dim
+    train_fname = corpus_params.train_url_char \
+        if embedding_params.char_level \
+        else corpus_params.train_url_word
+    full_vecs_fname = embedding_params.raw_pretrained_embeddings_url
+    needed_vecs_fname = embedding_params.pretrained_embeddings_url
+    corpus_open_encoding = corpus_params.open_file_encoding
+    embedding_open_encoding = embedding_params.open_file_encoding
+    embedding_save_encoding = embedding_params.save_file_encoding
+
+    all_tokens = read_tokens(train_fname, corpus_open_encoding)
+    needed_token2vec = load_vecs(needed_vecs_fname, vec_dim,
+                                 open_encoding=embedding_open_encoding)
 
     is_all_in_needed = True
     for token in all_tokens:
@@ -107,8 +116,8 @@ def get_needed_vectors(url, full_vecs_fname, needed_vecs_fname,
             print(token, 'not in needed token2vec.')
             is_all_in_needed = False
     if not is_all_in_needed:
-        with open(full_vecs_fname, 'r', encoding=open_encoding) as full_file, \
-                open(needed_vecs_fname, 'a', encoding=save_encoding) as needed_file:
+        with open(full_vecs_fname, 'r', encoding=embedding_open_encoding) as full_file, \
+                open(needed_vecs_fname, 'a', encoding=embedding_save_encoding) as needed_file:
             line_count = 0
             print('============ In ' + sys._getframe().f_code.co_name + '() func ============')
             for line in full_file:
@@ -121,7 +130,8 @@ def get_needed_vectors(url, full_vecs_fname, needed_vecs_fname,
                     for token in tokens:
                         needed_file.write(token+' ')
                     needed_file.write('\n')
-        needed_token2vec = load_vecs(needed_vecs_fname, open_encoding=open_encoding)
+        needed_token2vec = load_vecs(needed_vecs_fname, vec_dim,
+                                     open_encoding=embedding_open_encoding)
     else:
         print('All tokens in needed token2vec.')
     return needed_token2vec
@@ -203,13 +213,19 @@ def split_train_val_test(operation, corpus_params, embedding_params, force_todo=
         print('=================================================')
         print(line_cnt, 'lines have been processed finally.')
 
+    print('raw file count lines:', count_lines(raw_url, open_encoding))
+    print('processed file count lines:', count_lines(processed_url, open_encoding))
+    print('train file count lines:', count_lines(train_fname, open_encoding))
+    print('val file count lines:', count_lines(val_fname, open_encoding))
+    print('test file count lines:', count_lines(test_fname, open_encoding))
 
-def load_pretrained_token_vecs(fname, open_encoding='utf-8'):
+
+def load_pretrained_token_vecs(fname, vec_dim, open_encoding='utf-8'):
     """
     load needed token vectors
     :return: dict, {token: str => embedding: numpy array}
     """
-    token2vec = load_vecs(fname, open_encoding=open_encoding)
+    token2vec = load_vecs(fname, vec_dim, open_encoding=open_encoding)
     for token, embedding in token2vec.items():
         embedding = np.asarray(embedding, dtype=np.float32)
         token2vec[token] = embedding
@@ -264,7 +280,7 @@ def get_max_len(url, open_encoding='utf-8'):
     return src_max_len, tgt_max_len
 
 
-def fit_tokenizer(raw_url, keep_token_num, filters='',
+def fit_tokenizer(raw_url, keep_token_num, filters='\t\n',
                   oov_tag='<unk>', open_encoding='utf-8'):
     """
     use corpus to fit tokenizer.
@@ -273,7 +289,7 @@ def fit_tokenizer(raw_url, keep_token_num, filters='',
             on token frequency. Only the most common `keep_token_num` tokens
             will be kept.
     :param filters: a string where each element is a character that will be
-            filtered from the texts. The default is empty string.
+            filtered from the texts. The default includes tabs and line breaks.
     :param oov_tag: if given, it will be added to token_index and used to
             replace out-of-vocabulary tokens during text_to_sequence calls.
     :param open_encoding:
@@ -372,9 +388,10 @@ def generate_batch_data_file(fname, tokenizer, input_len, output_len, batch_size
 
 
 if __name__ == '__main__':
-    embeddings_fname = 'E:\PyCharmProjects\zlyang-seq2seq\data\pretrained-embeddings' \
-                       '\\tencent_ailab_zh_embeddings\\tencent.ailab.zh.vecs'
-    word2vec = load_vecs(embeddings_fname, head_n=170000)
+    embedding_name = available_embeddings[1]
+    embedding_params = get_embedding_params(embedding_name)
+    embeddings_fname = embedding_params.raw_pretrained_embeddings_url
+    word2vec = load_vecs(embeddings_fname, embedding_params.vec_dim, head_n=170000)
     print('read %d words' % len(word2vec))
     object_size = tools.byte_to_gb(sys.getsizeof(word2vec))
-    print('word2vec dict memory size: %.6f GB' % object_size)
+    print('word2vec dict memory size: %.6f GB.' % object_size)

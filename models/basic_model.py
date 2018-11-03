@@ -113,14 +113,21 @@ class BasicModel:
             self.input_len = None
             self.output_len = None
 
+        # In `word_index` dict: `unk_tag` => 1; word counted max => 2
+        # Just take the first `keep_token_num` words in `word_index` into account.
+        # Also include unk tag.
         self.keep_token_num = hyperparams.keep_token_num
-        self.token_vec_dim = hyperparams.token_vec_dim
+        self.token_vec_dim = hyperparams.token_vec_dim \
+            if embedding_params.vec_dim is None else embedding_params.vec_dim
         self.batch_size = hyperparams.batch_size
-        self.tokenizer = reader.fit_tokenizer(self.processed_url, self.keep_token_num,
+        # Set `num_words` to be one more than intended due to a bug in tokenizer of Keras.
+        self.tokenizer = reader.fit_tokenizer(self.processed_url, self.keep_token_num+1,
                                               corpus_params.filters, embedding_params.unk_tag,
                                               self.corpus_open_encoding)
         # Actually word_index dict of tokenizer instance includes all words.
-        self.vocab_size = min(len(self.tokenizer.word_index), self.keep_token_num+1)
+        # Get done => Get the right vocab_size.
+        self.vocab_size = min(len(self.tokenizer.word_index), self.keep_token_num)
+        # May since keras 2.2.4
         self.id2token = self.tokenizer.index_word
 
         self.pad = self.hyperparams.pad
@@ -163,17 +170,22 @@ class BasicModel:
         x_in_id_seq = Input(name='x_in', shape=(None,), dtype='int32')
         y_in_id_seq = Input(name='y_in', shape=(None,), dtype='int32')
         if self.pretrained_embeddings_fname:
-            token2vec = reader.load_pretrained_token_vecs(self.pretrained_embeddings_fname)
+            token2vec = reader.load_pretrained_token_vecs(self.pretrained_embeddings_fname,
+                                                          self.token_vec_dim,
+                                                          self.embedding_open_encoding)
             self.embedding_matrix = reader.get_embedding_matrix(token2id=self.tokenizer.word_index,
                                                                 token2vec=token2vec,
                                                                 vec_dim=self.token_vec_dim)
+            # TODO: Does the shape of the embedding matrix need to match the Embedding layer?
             # Get done => Not specify the input len of embedding layer.
+            # Set `trainable=True` due to word vec of unk symbol cannot be found.
+            # The word vectors will get fine tuned for the specific NLP task during training.
             embedding = Embedding(input_dim=self.vocab_size + 1,
                                   output_dim=self.token_vec_dim,
                                   weights=[self.embedding_matrix],
                                   input_length=None,
                                   name='pretrained_embedding',
-                                  trainable=False)
+                                  trainable=True)
         else:
             embedding = Embedding(input_dim=self.vocab_size + 1,
                                   output_dim=self.token_vec_dim,
