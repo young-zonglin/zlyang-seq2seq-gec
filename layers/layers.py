@@ -20,7 +20,8 @@ class GetPadMask(Layer):
             mask = K.cast(K.greater(token_id_seq, 0), 'float32')
         elif input_ndim == 3:
             onehot_vec_seq = inputs
-            middle_sum = K.reshape(K.sum(onehot_vec_seq, -1), (self.batch_size, -1))
+            # Note that the id of padding symbol is zero.
+            middle_sum = K.reshape(K.sum(onehot_vec_seq[:, :, 1:], -1), (self.batch_size, -1))
             mask = K.cast(K.greater(middle_sum, 0), 'float32')
         else:
             raise ValueError('In class ' + self.__class__.__name__ +
@@ -37,6 +38,6 @@ class GetPadMask(Layer):
                              ', input should be a 2D or 3D tensor.')
 
     def get_config(self):
-        config = {'batch_size' : self.batch_size}
+        config = {'batch_size': self.batch_size}
         base_config = super(GetPadMask, self).get_config()
         return dict(base_config.items() | config.items())
