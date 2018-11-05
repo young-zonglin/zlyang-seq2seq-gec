@@ -153,13 +153,6 @@ class BasicModel:
                   y_in_vec_seq, y_in_id_seq, y_mask):
         raise NotImplementedError()
 
-    def _masked_loss(self, target, preds):
-        y_mask = GetPadMask(self.batch_size)(target)
-        cross_entropy = K.categorical_crossentropy(target, preds)
-        assert K.ndim(cross_entropy) == 2
-        loss = K.sum(cross_entropy * y_mask, axis=1, keepdims=True) / K.sum(y_mask, axis=1, keepdims=True)
-        return K.reshape(loss, [self.batch_size, -1])
-
     def build(self):
         """
         define model
@@ -230,13 +223,29 @@ class BasicModel:
 
         return self.model
 
+    def _masked_loss(self, target, preds):
+        y_mask = GetPadMask(self.batch_size)(target)
+        cross_entropy = K.categorical_crossentropy(target, preds)
+        assert K.ndim(cross_entropy) == 2
+        loss = K.sum(cross_entropy * y_mask, axis=1, keepdims=True) / K.sum(y_mask, axis=1, keepdims=True)
+        return K.reshape(loss, [self.batch_size, -1])
+
+    # Get done => masked acc
+    def _masked_categorical_accuracy(self, target, preds):
+        y_mask = GetPadMask(self.batch_size)(target)
+        raw_tag = K.cast(K.equal(K.argmax(target, axis=-1),
+                                 K.argmax(preds, axis=-1)),
+                         K.floatx())
+        assert K.ndim(raw_tag) == 2
+        return raw_tag * y_mask
+
     # TODO 优化算法
     # 动态学习率 => done，在回调中更改学习率
     # Get done => Masked loss function.
     def compile(self):
         self.model.compile(loss=self._masked_loss,
                            optimizer=self.hyperparams.optimizer,
-                           metrics=['accuracy'])
+                           metrics=['accuracy', self._masked_categorical_accuracy])
 
         # Transformer-based model的图太复杂太乱，没有看的必要
         # 不要在IDE中打开，否则会直接OOM
