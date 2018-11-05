@@ -29,7 +29,8 @@ class BasicHParams:
         self.current_classname = self.__class__.__name__
 
         # Get done => Three len mode available.
-        self.len_mode = available_len_mode[2]
+        # Use fixed len mode due to memory including graphics card limitations.
+        self.len_mode = available_len_mode[0]
         self.input_len = 20
         self.output_len = self.input_len
         self.keep_token_num = 10000
@@ -112,8 +113,15 @@ class AttnSeq2SeqHParams(BasicHParams):
     def __init__(self):
         super(AttnSeq2SeqHParams, self).__init__()
 
-        self.rnn = available_RNN[1]
-        self.keep_token_num = 10000
+        self.rnn = available_RNN[0]
+        # Set `keep_token_num` properly, just filter out tokens thar appear only once.
+        # Motivation:
+        # 1. avoid label unbalanced problem;
+        # 2. reduce the vocab size significantly;
+        # 3. avoid too many unk symbols occur.
+        # TODO: vocabulary of src and tgt side
+        # TODO: automatic determine it value
+        self.keep_token_num = 138000
 
         self.encoder_layer_num = 1
         self.decoder_layer_num = 1
@@ -125,14 +133,17 @@ class AttnSeq2SeqHParams(BasicHParams):
         self.bias_l2_lambda = 0
         self.activity_l2_lambda = 0
 
-        self.optimizer = RMSprop()
+        # RMSprop + momentum => Adam
+        self.optimizer = Adam()
         self.lr_scheduler = LRSchedulerDoNothing()
 
         self.early_stop_monitor = 'val_loss'
-        self.early_stop_patience = 20
+        # One iteration is particularly time consuming.
+        # Maybe 5 times is more than enough.
+        self.early_stop_patience = 5
 
-        # The max value limited by memory including graphics card.
-        self.batch_size = 192
+        # The max value limited by memory including graphics card and vocab size.
+        self.batch_size = 32
 
     def __str__(self):
         ret_info = list()
