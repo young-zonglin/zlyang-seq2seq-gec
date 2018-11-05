@@ -3,19 +3,23 @@ from configs import get_corpus_params
 from utils import reader
 
 
-def stat(wcounts):
+def stat(tcounts):
     times_stat = {}
-    for word, count in wcounts:
+    for token, count in tcounts:
         if times_stat.get(count) is None:
             times_stat[count] = 1
         else:
             times_stat[count] += 1
-    all_words_num = len(wcounts)
-    assert all_words_num == sum(map(lambda x: x[1], list(times_stat.items())))
+    vocab_size = len(tcounts)
+    assert vocab_size == sum(map(lambda x: x[1], list(times_stat.items())))
+    all_tokens_num = sum(map(lambda x: x[1], tcounts))
+    print('all tokens num:', all_tokens_num)
     times_stat = list(times_stat.items())
     times_stat.sort(key=lambda x: x[1], reverse=True)
     for times, cnt in times_stat:
-        print(cnt, 'words occur', times, 'times, the ratio is', cnt / all_words_num * 100, '%')
+        print('{0:6} words occur {1:10} times, the ratio of vocab_size is {2:>10.6f}% '
+              '| the ratio of all tokens num is {3:>10.6f}%'
+              .format(cnt, times, cnt / vocab_size * 100, cnt*times / all_tokens_num * 100))
 
 
 if __name__ == '__main__':
@@ -25,13 +29,13 @@ if __name__ == '__main__':
     corpus_open_encoding = corpus_params.open_file_encoding
 
     tokenizer = reader.fit_tokenizer(processed_url, None)
-    wcounts = list(tokenizer.word_counts.items())
+    tcounts = list(tokenizer.word_counts.items())
 
-    all_words = reader.read_tokens(processed_url, corpus_open_encoding)
+    all_tokens = reader.read_tokens(processed_url, corpus_open_encoding)
 
-    print('all words num come from tokenizer:', len(wcounts))
-    print('all words num come from `read_tokens` function:', len(all_words))
-    if len(wcounts) == len(all_words):
+    print('vocabulary size come from tokenizer:', len(tcounts))
+    print('vocab size come from `read_tokens` function:', len(all_tokens))
+    if len(tcounts) == len(all_tokens):
         print('ok, they are the same.')
 
-    stat(wcounts)
+    stat(tcounts)
