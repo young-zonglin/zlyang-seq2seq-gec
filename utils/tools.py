@@ -78,10 +78,12 @@ def get_fnames_under_path(path):
     return fnames
 
 
-def train_model(seq2seq_model, hyperparams, dataset_params, embedding_params,
+def train_model(seq2seq_model, hyperparams, dataset_params, embedding_params, model_url=None,
                 observe=False, error_text='', beam_width=3, beamsearch_interval=10, is_latin=False):
     seq2seq_model.setup(hyperparams, dataset_params, embedding_params)
     seq2seq_model.build()
+    if model_url:
+        seq2seq_model.load(model_url)
     seq2seq_model.compile()
     seq2seq_model.fit_generator(observe, error_text, beam_width, beamsearch_interval, is_latin)
     seq2seq_model.evaluate_generator()
