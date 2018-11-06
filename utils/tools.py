@@ -38,7 +38,7 @@ def ids2seq(ids, id2token, embedding_params, return_sen=True):
     :return: token list or sentence.
     """
     if ids.__class__ is str:
-        ids = ids.split(' ')
+        ids = ids.split()
     elif ids.__class__ is not list:
         raise TypeError('In ' + sys._getframe().f_code.co_name +
                         '() function, ids should be a list.')

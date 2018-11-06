@@ -9,11 +9,11 @@ def apply():
     model_name = available_models[0]
     seq2seq_model = ModelFactory.make_model(model_name)
     hyperparams = get_hyperparams(model_name)
-    corpus_name = available_corpus[0]
+    corpus_name = available_corpus[1]
     corpus_params = get_corpus_params(corpus_name)
-    embedding_name = available_embeddings[0]
+    embedding_name = available_embeddings[1]
     embedding_params = get_embedding_params(embedding_name)
-    model_url = ''
+    model_url = 'result/AS2SModel_nlpcc-2018-gec_zh-tencent-ailab_2018-11-05 23_07_04/epoch_0002-2.12083.h5'
 
     seq2seq_model.setup(hyperparams, corpus_params, embedding_params)
     seq2seq_model.build()
@@ -23,7 +23,7 @@ def apply():
 
     error_text = '我在家里一个人学习中文。'
     correct_text = beam_search(custom_model=seq2seq_model, error_text=error_text,
-                               beam_width=5, is_latin=False)
+                               beam_width=3, is_latin=False)
     print('=======================================')
     print('error text:', error_text)
     print('correct text:', correct_text)

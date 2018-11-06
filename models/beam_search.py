@@ -25,7 +25,7 @@ def beam_search(custom_model, error_text, beam_width=3, is_latin=False):
     if custom_model.embedding_params.char_level:
         error_text = tools.sen2chars(error_text, is_latin)
     else:
-        error_text = [token for token in jieba.lcut(error_text) if not token.isspace()]
+        error_text = [word for word in jieba.lcut(error_text) if not word.isspace()]
     error_text = ' '.join(error_text)
     x_in_id_seq = custom_model.tokenizer.texts_to_sequences([error_text])[0]
     assert type(x_in_id_seq) is list
@@ -40,8 +40,8 @@ def beam_search(custom_model, error_text, beam_width=3, is_latin=False):
     for i in range(output_len):
         _res2ppl = {}  # Save result => ppl temporarily
         for res in res2ppl.keys():
-            res = list(map(int, res.split(' ')))
-            if res[-1] == end_id:
+            res = list(map(int, res.split()))
+            if res[-1] == end_id and i != 0:  # Be careful when `start_tag` == `end_tag`
                 continue
 
             res = np.array([res], dtype=np.int32)
@@ -66,7 +66,7 @@ def beam_search(custom_model, error_text, beam_width=3, is_latin=False):
 
     # Normalize the ppl.
     for sen, ppl in res2ppl.items():
-        res2ppl[sen] = ppl / len(sen.split(' '))
+        res2ppl[sen] = ppl / len(sen.split())
     # pick up the best sentence
     max_sen = max(res2ppl, key=res2ppl.get)
     return tools.ids2seq(max_sen, custom_model.id2token, custom_model.embedding_params, return_sen=True)
