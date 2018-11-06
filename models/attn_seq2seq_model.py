@@ -45,7 +45,8 @@ class AttnSeq2SeqModel(BasicModel):
                                              name="encoder_dense_layer",
                                              kernel_regularizer=regularizers.l2(self.hyperparams.kernel_l2_lambda),
                                              bias_regularizer=regularizers.l2(self.hyperparams.bias_l2_lambda),
-                                             activity_regularizer=regularizers.l2(self.hyperparams.activity_l2_lambda))
+                                             activity_regularizer=regularizers.l2(self.hyperparams.activity_l2_lambda)
+                                             )
                                        )(x)
 
         # decoder
@@ -66,6 +67,10 @@ class AttnSeq2SeqModel(BasicModel):
                                                      x_mask, y_mask])
         middle = concatenate([y_hidden_seq, context_vec_seq], axis=-1)
         attn_hidden_seq = Dense(self.hyperparams.hidden_state_dim, activation='relu',
-                                name='attn_hidden_dense_layer')(middle)
+                                name='attn_hidden_dense_layer',
+                                kernel_regularizer=regularizers.l2(self.hyperparams.kernel_l2_lambda),
+                                bias_regularizer=regularizers.l2(self.hyperparams.bias_l2_lambda),
+                                activity_regularizer=regularizers.l2(self.hyperparams.activity_l2_lambda)
+                                )(middle)
 
         return attn_hidden_seq

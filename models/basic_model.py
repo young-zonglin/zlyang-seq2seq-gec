@@ -198,7 +198,8 @@ class BasicModel:
         preds = TimeDistributed(Dense(self.vocab_size+1, activation='softmax', name="output_layer",
                                       kernel_regularizer=regularizers.l2(self.hyperparams.kernel_l2_lambda),
                                       bias_regularizer=regularizers.l2(self.hyperparams.bias_l2_lambda),
-                                      activity_regularizer=regularizers.l2(self.hyperparams.activity_l2_lambda))
+                                      activity_regularizer=regularizers.l2(self.hyperparams.activity_l2_lambda)
+                                      )
                                 )(attn_hidden_seq)
 
         # end_id = self.tokenizer.word_index[self.embedding_params.end_tag]
