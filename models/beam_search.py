@@ -32,41 +32,47 @@ def beam_search(custom_model, error_text, beam_width=3, is_latin=False):
     assert type(x_in_id_seq[0]) is int
     start_id = custom_model.tokenizer.word_index[custom_model.embedding_params.start_tag]
     end_id = custom_model.tokenizer.word_index[custom_model.embedding_params.end_tag]
-    res2ppl = {' '.join([str(start_id)]): 0}
+    results = [[start_id]]
+    ppls = [0]
     output_len = len(x_in_id_seq) if custom_model.output_len is None else custom_model.output_len
     x_in_id_seq = np.array([x_in_id_seq], dtype=np.int32)
     assert x_in_id_seq.ndim == 2
 
     for i in range(output_len):
-        _res2ppl = {}  # Save result => ppl temporarily
-        for res in res2ppl.keys():
-            res = list(map(int, res.split()))
+        _res = []  # Save result temporarily.
+        _ppls = []  # Save ppl temporarily.
+        for j in range(len(results)):
+            res = results[j]
             if res[-1] == end_id and i != 0:  # Be careful when `start_tag` == `end_tag`
                 continue
 
-            res = np.array([res], dtype=np.int32)
-            proba = custom_model.model.predict([x_in_id_seq, res])
+            proba = custom_model.model.predict([x_in_id_seq, np.array([res], dtype=np.int32)])
             assert type(proba) is np.ndarray
             # get the proba distribution of next token.
             proba = np.reshape(proba[:, -1, :], (custom_model.vocab_size+1,))
             assert proba.shape == (custom_model.vocab_size+1,)
-
             log_proba = np.log(proba + 1e-6)
-            index_topk = np.argsort(-log_proba, axis=-1)[:beam_width]
-            res = [str(token_id) for token_id in res[0]]
-            for top_i in index_topk:
-                assert type(top_i) is np.int64
-                _res2ppl[' '.join(res+[str(top_i)])] = res2ppl[' '.join(res)]+log_proba[top_i]
+            for index in range(log_proba.shape[0]):
+                assert type(index) is int
+                _res.append(res + [index])
+                _ppls.append(ppls[j]+log_proba[index])
 
-        # All results end with <end>.
-        if not _res2ppl:
+        # All results end with `end_tag`.
+        if not _res or not _ppls:
             break
         else:
-            res2ppl = _res2ppl
+            # Normalize the ppl.
+            for m in range(len(_res)):
+                _ppls[m] = _ppls[m] / len(_res[m])
+            index_topk = np.argsort(-np.array(_ppls), axis=-1)[:beam_width]
+            results = []
+            ppls = []
+            for index in index_topk:
+                results.append(_res[index])
+                ppls.append(_ppls[index])
 
-    # Normalize the ppl.
-    for sen, ppl in res2ppl.items():
-        res2ppl[sen] = ppl / len(sen.split())
     # pick up the best sentence
-    max_sen = max(res2ppl, key=res2ppl.get)
+    max_index = np.argmax(ppls)
+    assert type(max_index) is np.int64
+    max_sen = results[max_index]
     return tools.ids2seq(max_sen, custom_model.id2token, custom_model.embedding_params, return_sen=True)
