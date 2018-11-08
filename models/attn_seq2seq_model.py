@@ -40,9 +40,10 @@ class AttnSeq2SeqModel(BasicModel):
             x = Bidirectional(this_rnn,
                               name=str(i+1)+'th_encoder_retseq_bi_'+rnn_class_name)(x)
             x = Dropout(p_dropout, name=str(i+1) + 'th_encoder_dropout')(x)
-        # to make sure dim of encoder outputs match decoder hidden vector
-        x_hidden_seq = TimeDistributed(Dense(self.hyperparams.context_vec_dim, activation='relu',
-                                             name="encoder_dense_layer",
+        # Projection_layer => to make sure dim of encoder outputs match decoder hidden vector.
+        # The activation function should not be used here
+        x_hidden_seq = TimeDistributed(Dense(self.hyperparams.context_vec_dim,
+                                             name="projection_layer",
                                              kernel_regularizer=regularizers.l2(self.hyperparams.kernel_l2_lambda),
                                              bias_regularizer=regularizers.l2(self.hyperparams.bias_l2_lambda),
                                              activity_regularizer=regularizers.l2(self.hyperparams.activity_l2_lambda)
@@ -66,7 +67,8 @@ class AttnSeq2SeqModel(BasicModel):
                                                   )([x_hidden_seq, y_hidden_seq,
                                                      x_mask, y_mask])
         middle = concatenate([y_hidden_seq, context_vec_seq], axis=-1)
-        attn_hidden_seq = Dense(self.hyperparams.hidden_state_dim, activation='relu',
+        # Follow Luong's work, use `tanh` activation function here.
+        attn_hidden_seq = Dense(self.hyperparams.hidden_state_dim, activation='tanh',
                                 name='attn_hidden_dense_layer',
                                 kernel_regularizer=regularizers.l2(self.hyperparams.kernel_l2_lambda),
                                 bias_regularizer=regularizers.l2(self.hyperparams.bias_l2_lambda),
