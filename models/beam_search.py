@@ -52,8 +52,8 @@ def beam_search(custom_model, error_text, beam_width=3, is_latin=False):
             proba = np.reshape(proba[:, -1, :], (custom_model.vocab_size+1,))
             assert proba.shape == (custom_model.vocab_size+1,)
             log_proba = np.log(proba + 1e-6)
-            for index in range(log_proba.shape[0]):
-                assert type(index) is int
+            for index in np.argsort(-log_proba)[:beam_width]:
+                assert type(index) is np.int64
                 _res.append(res + [index])
                 _ppls.append(ppls[j]+log_proba[index])
 
