@@ -8,6 +8,8 @@ from layers import EncoderDecoderAttnLayer
 from models import BasicModel
 
 
+# TODO: Feed concat of final state of forward and backward pass of encoder to each decoding timestep.
+# TODO: Feed avg pooling of output seq of encoder to each decoding timestep.
 class AttnSeq2SeqModel(BasicModel):
     def __init__(self):
         super(AttnSeq2SeqModel, self).__init__()

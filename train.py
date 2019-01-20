@@ -13,7 +13,7 @@ def train():
     embedding_name = available_embeddings[1]
     embedding_params = get_embedding_params(embedding_name)
 
-    model_url = 'result/AS2SModel_nlpcc-2018-gec_zh-tencent-ailab_2018-11-05 00_48_27/epoch_0003-1.46971.h5'
+    model_url = ''
     error_text = '她也就是说爱撒娇。'
     tools.train_model(seq2seq_model, hyperparams, corpus_params, embedding_params, model_url,
                       observe=True, error_text=error_text,
