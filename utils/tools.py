@@ -57,7 +57,7 @@ def sen2chars(sen, is_latin=False):
     """
     if is_latin:
         sen = sen.replace(' ', '_')
-    return [token for token in sen if token and not token.isspace()]
+    return [char for char in sen if not char.isspace()]
 
 
 def get_fnames_under_path(path):
