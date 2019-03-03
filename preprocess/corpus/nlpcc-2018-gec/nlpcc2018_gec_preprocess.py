@@ -35,13 +35,11 @@ def transform_line(line, tgt_file, embedding_params, is_latin):
         else:
             tgt_sen_segmented = jieba.lcut(tgt_sen)
         tgt_file.write(embedding_params.start_tag + ' ')
-        for token in orig_sen_segmented:
-            tgt_file.write(token + ' ')
+        tgt_file.write(' '.join(orig_sen_segmented))
         tgt_file.write(embedding_params.end_tag + ' ')
         tgt_file.write('\t')
         tgt_file.write(embedding_params.start_tag + ' ')
-        for token in tgt_sen_segmented:
-            tgt_file.write(token + ' ')
+        tgt_file.write(' '.join(tgt_sen_segmented))
         tgt_file.write(embedding_params.end_tag + ' ')
         tgt_file.write('\n')
 
