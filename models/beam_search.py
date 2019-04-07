@@ -52,6 +52,7 @@ def beam_search(custom_model, error_text, beam_width=3, is_latin=False):
             proba = np.reshape(proba[:, -1, :], (custom_model.vocab_size+1,))
             assert proba.shape == (custom_model.vocab_size+1,)
             log_proba = np.log(proba + 1e-6)
+            # bug here => top-k score sen rather than top-k probability words
             for index in np.argsort(-log_proba)[:beam_width]:
                 assert type(index) is np.int64
                 _res.append(res + [index])
@@ -61,7 +62,7 @@ def beam_search(custom_model, error_text, beam_width=3, is_latin=False):
         if not _res or not _ppls:
             break
         else:
-            # Normalize the ppl.
+            # Normalize the ppl. => bug here...
             for m in range(len(_res)):
                 _ppls[m] = _ppls[m] / len(_res[m])
             index_topk = np.argsort(-np.array(_ppls), axis=-1)[:beam_width]
